@@ -10,7 +10,11 @@ uniform sampler2D colortex1;
 uniform sampler2D colortex2;
 uniform sampler2D colortex3;
 
+uniform int worldTime;
 uniform ivec2 eyeBrightnessSmooth;
+
+uniform vec3 sunPosition;//两者分别代表太阳和月亮在眼坐标系中的坐标
+uniform vec3 moonPosition;
 
 uniform float far;
 uniform float viewWidth;
@@ -26,7 +30,11 @@ uniform mat4 shadowModelViewInverse;
 uniform mat4 shadowProjection;
 uniform mat4 shadowProjectionInverse;
 
+varying float isNight;
+
 varying vec4 texcoord;
+varying vec3 mySkyColor;
+varying vec3 mySunColor;
 
 vec2 getFishEyeCoord(vec2 positionInNdcCoord) {
     return positionInNdcCoord / (0.15 + 0.85*length(positionInNdcCoord.xy));
@@ -83,7 +91,6 @@ vec4 getShadow(vec4 color, vec4 positionInWorldCoord) {
     sum /= pow(radius*2+1, 2);
     color.rgb *= sum*shadowStrength + (1-shadowStrength);  
     
-
     return color;
 }
 
@@ -119,6 +126,55 @@ vec3 getBloom() {
     sum /= pow(radius+1, 2);
     return sum*0.3;
 }
+
+/*
+* @function drawSky : 天空绘制
+* @param color : 原始颜色
+* @param positionInViewCoord : 眼坐标
+* @param positionInWorldCoord : 我的世界坐标
+* @return : 绘制天空后的颜色
+*/
+vec3 drawSky(vec3 color,vec4 positionInViewCoord,vec4 positionInWorldCoord)
+{
+    float dis = length(positionInWorldCoord.xyz) / far;
+
+    //眼坐标系中的点到太阳的距离
+    float disToSun = 1.0-dot(normalize(positionInViewCoord.xyz),normalize(sunPosition));//1-cosx = 2sin^2(x/2)实际上也不是那种准确的距离
+    float disToMoon = 1.0-dot(normalize(positionInViewCoord.xyz),normalize(moonPosition));//就是和真实距离具有相关性即可,我们再调出实际效果即可
+
+    //绘制圆形太阳
+    vec3 drawSun = vec3(0);
+    if(disToSun<0.005&&dis>0.999)//注意是两个条件,是否在太阳的范围,是否是天空
+    {
+        drawSun = mySunColor*2 * (1.0-isNight);
+    }
+    //绘制圆形月亮
+    vec3 drawMoon = vec3(0);
+    if(disToMoon<0.005&&dis>0.999)
+    {
+        drawMoon = mySunColor*2 ;
+    }
+    vec3 finalColor = mySkyColor;
+    
+    //雾和太阳颜色混合
+    float sunMixFactor = clamp(1.1-disToSun,0,1)* (1.0-isNight);
+    finalColor = mix(finalColor,mySunColor,pow(sunMixFactor,4))*0.752;
+
+    //雾和月亮颜色混合
+    float MoonMixFactor = clamp(1.0-disToMoon,0,1) * isNight;
+    finalColor = mix(finalColor,mySunColor,pow(MoonMixFactor,4));
+    //finalColor*=vec3(normalize(abs(positionInWorldCoord.y-40)));
+    if(positionInWorldCoord.y-80<=0)
+    {
+        //finalColor = mix(finalColor,vec3(0.6667, 0.8784, 1.0),abs(positionInWorldCoord.y-60)/70);
+        finalColor = mix(finalColor,vec3(0.0706, 0.1647, 0.2196)*(1+6*(1-isNight)),abs(positionInWorldCoord.y-80)/70);
+        //finalColor = mix(finalColor,vec3(0.6667, 0.8784, 1.0),0.13);
+    }
+
+    return mix(color,finalColor,clamp(pow(dis,7),0,1))+drawSun +drawMoon;//天空本身颜色加上太阳或月亮颜色
+    //return finalColor+drawMoon+drawSun;
+}
+
 vec4 getBloomSource(vec4 color)//这个应该会写
 {
     //绘制泛光
@@ -182,6 +238,13 @@ void main() {
 
      //color.rgb = pow(color.rgb,vec3(1/1.5));
      //color.rgb*=vec3(0.499,0.527,0.114);
+    int hour = worldTime/1000;
+    int next = (hour+1<24)?(hour+1):(0);//形成了一个循环
+    float delta = float(worldTime-hour*1000)/1000;
+
+
+    color.xyz = drawSky(color.xyz,positionInViewCoord,positionInWorldCoord);
+
     
     gl_FragData[0] = color;
     gl_FragData[1] = getBloomSource(color);

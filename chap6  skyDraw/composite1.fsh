@@ -2,7 +2,10 @@
 
 // const bool generateShadowMipmap = true;         
 // const bool generateShadowColorMipmap = true;
-// const bool gdepthMipmapEnabled = true;
+const bool colortex1MipmapEnabled = true;
+const bool colortex0MipmapEnabled = true;
+const bool colortex2MipmapEnabled = true;
+
 // const bool shadowtexMipmap = true;              
 // const bool shadowtex0Mipmap = true;             
 // const bool shadowtex1Mipmap = true;             
