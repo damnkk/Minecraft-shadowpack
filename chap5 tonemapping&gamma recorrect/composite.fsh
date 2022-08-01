@@ -52,7 +52,7 @@ vec4 getShadow(vec4 color, vec4 positionInWorldCoord) {
     vec4 positionInSunScreenCoord = positionInSunNdcCoord * 0.5 + 0.5;
 
     float currentDepth = positionInSunScreenCoord.z;    // 当前点的深度
-    float dis = length(positionInWorldCoord.xyz) / far;
+    float dis = length(positionInWorldCoord.xyz) / far;//保证越远,阴影越不明显
 
     /*
     float closest = texture2D(shadow, positionInSunScreenCoord.xy).x; 
@@ -67,7 +67,7 @@ vec4 getShadow(vec4 color, vec4 positionInWorldCoord) {
     
     int radius = 1;
     float sum = pow(radius*2+1, 2);
-    float shadowStrength = 0.6 * (1-dis)*(1-0.6*isNight);
+    float shadowStrength = 0.6 * (1-dis)*(1-0.6*isNight);//这里增加了越是晚上,阴影越不明显
     for(int x=-radius; x<=radius; x++) {
         for(int y=-radius; y<=radius; y++) {
             // 采样偏移
